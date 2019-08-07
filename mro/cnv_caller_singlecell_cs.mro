@@ -1,0 +1,57 @@
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+@include "cnv_caller_singlecell.mro"
+
+pipeline CNV_CALLER_SINGLECELL_CS(
+    in  string  fastq_mode                "Configuration of the input fastqs",
+    in  string  sample_id                 "Identifier for sample",
+    in  string  sample_desc               "Sample description",
+    in  map[]   sample_def                "Sample information",
+    in  map     downsample                "Read downsampling",
+    in  string  reference_path            "Path to reference",
+    in  map     cnv_params                "CNV calling parameters",
+    in  int     force_cells               "Force cell detection",
+    #
+    out bam     possorted_bam             "Position-sorted BAM"       "possorted_bam.bam",
+    out bam.bai possorted_bam_index       "Position-sorted BAM index"  "possorted_bam.bam.bai",
+    out bed     node_cnv_calls            "CNV calls with imputation",
+    out bed     node_unmerged_cnv_calls   "CNV calls without imputation",
+    out bed     mappable_regions          "Highly mappable regions",
+    out csv     per_cell_summary_metrics  "Per-cell summary metrics",
+    out csv     summary                   "Analysis summary metrics",
+    out html    web_summary               "Run summary HTML",
+    out h5      cnv_data                  "HDF5 file with CNV data",
+    out dloupe  dloupe                    "Loupe visualization file",
+    out txt     alarms_summary            "Run alerts",
+)
+{
+    call CNV_CALLER_SINGLECELL(
+        sample_id         = self.sample_id,
+        sample_desc       = self.sample_desc,
+        fastq_mode        = self.fastq_mode,
+        sample_def        = self.sample_def,
+        trim_length       = 0,
+        reference_path    = self.reference_path,
+        barcode_whitelist = "737K-crdna-v1",
+        cnv_params        = self.cnv_params,
+        targets           = null,
+        downsample        = self.downsample,
+        sex               = null,
+        force_cells       = self.force_cells,
+    )
+
+    return (
+        possorted_bam            = CNV_CALLER_SINGLECELL.possorted_bam,
+        possorted_bam_index      = CNV_CALLER_SINGLECELL.possorted_bam_index,
+        mappable_regions         = CNV_CALLER_SINGLECELL.mappable_regions,
+        node_cnv_calls           = CNV_CALLER_SINGLECELL.node_cnv_calls,
+        node_unmerged_cnv_calls  = CNV_CALLER_SINGLECELL.node_unmerged_cnv_calls,
+        per_cell_summary_metrics = CNV_CALLER_SINGLECELL.per_cell_summary_metrics,
+        summary                  = CNV_CALLER_SINGLECELL.summary_cs,
+        web_summary              = CNV_CALLER_SINGLECELL.web_summary,
+        cnv_data                 = CNV_CALLER_SINGLECELL.cnv_data_cs,
+        dloupe                   = CNV_CALLER_SINGLECELL.dloupe,
+        alarms_summary           = CNV_CALLER_SINGLECELL.alarms_summary,
+    )
+}

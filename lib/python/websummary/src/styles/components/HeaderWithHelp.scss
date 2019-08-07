@@ -1,0 +1,20 @@
+.header-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.header-questionMark {
+  height: 1rem;
+  margin-top: 0.825rem;
+  margin-left: 0.5rem;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.header-questionMark:hover {
+  opacity: 1.0;
+}
+
+.helpText {
+  display: none;
+}

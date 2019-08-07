@@ -1,0 +1,92 @@
+#
+# Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+#
+@include "_tree_builder.mro"
+@include "_breakpoint_pipeline_stages.mro"
+@include "_breakpoint_caller_core.mro"
+@include "_normalizer_core.mro"
+
+pipeline _BREAKPOINT_PIPELINE(
+    in  string sex,
+    in  string reference_path,
+    in  h5     raw_sc_profiles,
+    in  h5     tracks,
+    in  map    params,
+    out h5     tree_data,
+    out h5     raw_node_profiles,
+    out h5     normalized_node_profiles,
+    out json   node_gc_params,
+    out h5     node_cnv_tracks,
+    out bed    node_cnv_calls,
+    out bed    node_unmerged_cnv_calls,
+)
+{
+    call _NORMALIZER_CORE as _SC_NORMALIZER(
+        raw_profiles   = self.raw_sc_profiles,
+        reference_path = self.reference_path,
+        tracks         = self.tracks,
+        is_singlecell  = true,
+    )
+
+    call _BREAKPOINT_CALLER_CORE as _SC_BREAKPOINT_CALLER(
+        profiles       = self.raw_sc_profiles,
+        tracks         = self.tracks,
+        reference_path = self.reference_path,
+        sex            = self.sex,
+        params         = self.params,
+        gc_norm_params = _SC_NORMALIZER.gc_norm_params,
+        is_singlecell  = true,
+    )
+
+    call _TREE_BUILDER(
+        profiles       = self.raw_sc_profiles,
+        cnv_tracks     = _SC_BREAKPOINT_CALLER.cnv_tracks,
+        tracks         = self.tracks,
+        reference_path = self.reference_path,
+    )
+
+    call _NORMALIZER_CORE as _NODE_NORMALIZER(
+        raw_profiles   = _TREE_BUILDER.internal_node_profiles,
+        reference_path = self.reference_path,
+        tracks         = self.tracks,
+        is_singlecell  = false,
+    )
+
+    call _BREAKPOINT_CALLER_CORE as _NODE_BREAKPOINT_CALLER(
+        profiles       = _TREE_BUILDER.internal_node_profiles,
+        tracks         = self.tracks,
+        reference_path = self.reference_path,
+        sex            = self.sex,
+        params         = self.params,
+        gc_norm_params = _NODE_NORMALIZER.gc_norm_params,
+        is_singlecell  = false,
+    )
+
+    call AGGREGATE_NODES(
+        reference_path              = self.reference_path,
+        tracks                      = self.tracks,
+        internal_cnv_tracks         = _NODE_BREAKPOINT_CALLER.cnv_tracks,
+        sc_cnv_tracks               = _SC_BREAKPOINT_CALLER.cnv_tracks,
+        internal_cnv_calls          = _NODE_BREAKPOINT_CALLER.cnv_calls,
+        sc_cnv_calls                = _SC_BREAKPOINT_CALLER.cnv_calls,
+        internal_unmerged_cnv_calls = _NODE_BREAKPOINT_CALLER.unmerged_cnv_calls,
+        sc_unmerged_cnv_calls       = _SC_BREAKPOINT_CALLER.unmerged_cnv_calls,
+        sc_gc_params                = _SC_NORMALIZER.gc_norm_params,
+        internal_gc_params          = _NODE_NORMALIZER.gc_norm_params,
+        sc_norm_profiles            = _SC_NORMALIZER.normalized_profiles,
+        internal_norm_profiles      = _NODE_NORMALIZER.normalized_profiles,
+        tree_data                   = _TREE_BUILDER.tree_data,
+    ) using (
+        volatile = true,
+    )
+
+    return (
+        tree_data                = AGGREGATE_NODES.tree_data,
+        raw_node_profiles        = _TREE_BUILDER.node_profiles,
+        normalized_node_profiles = AGGREGATE_NODES.norm_node_profiles,
+        node_gc_params           = AGGREGATE_NODES.node_gc_params,
+        node_cnv_tracks          = AGGREGATE_NODES.node_cnv_tracks,
+        node_cnv_calls           = AGGREGATE_NODES.node_cnv_calls,
+        node_unmerged_cnv_calls  = AGGREGATE_NODES.node_unmerged_cnv_calls,
+    )
+}

@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+#
+# Copyright (c) 2018 10x Genomics, Inc. All rights reserved.
+#
+# Cell Ranger DNA common docopt strings and options processing functions.
+#
+
+source $TENX_SCRIPTDIR/../tenkit/bin/common/_includes
+
+read -d '' DOCOPT_OPTIONS_DOWNSAMPLING <<EOF
+    --downsample=GB     Downsample input FASTQs to approximately GB 
+                            gigabases of input sequence. Optional.
+    --maxreads=NUM      Downsample input FASTQs to approximately NUM 
+                            single-ended input reads. Optional.
+EOF
+
+read -d '' DOCOPT_OPTIONS_CNV <<EOF
+    --force-cells=N             Define the top N barcodes with the most reads as
+                                    cells. N must be a positive integer <=
+                                    20,000. Please consult the documentation
+                                    before using this option.
+    --soft-min-avg-ploidy=FLOAT Use a known lower limit on the average ploidy of
+                                    the sample. Please consult the documentation
+                                    before using this option.
+    --soft-max-avg-ploidy=FLOAT Use a known upper limit of the average ploidy of
+                                    the sample. Please consult the documentation
+                                    before using this option. 
+EOF
+
+read -d '' DOCOPT_OPTIONS_SAMPLE_INFO <<EOF
+    --reference=PATH	Path of folder containing a 10x-compatible reference. Required.
+    --description=TEXT  More detailed sample description. Optional.
+EOF
+
+function process_options_reference {
+    # --reference
+    if [ -n "$reference" ]; then
+        reference_path=\"$(abspath $reference)\"
+    elif [ -n "$TENX_REFDATA" ]; then
+        reference_path=\"$(abspath $TENX_REFDATA)\"
+    else
+        error "You must specify the --reference argument"
+    fi    
+}
+
+function process_options_crdna {
+    # --description
+    if [ -n "$description" ]; then
+        sample_desc=\"$description\"
+    else
+        sample_desc=\"\"
+    fi
+
+    # match integers
+    int_re='^[0-9]+$'
+    # match 
+    # or try ^(?:[1-9]\d*|0)?(?:\.\d+)?$ 
+    float_re='^[^\-]?([0-9]*\.[0-9]+|[0-9]+)$'
+    
+    # --force_cells
+    # positive integer, <= 20000
+    if [ -n "$force_cells" ]; then
+        if [[ $force_cells =~ $int_re ]] && [ $force_cells -gt 0 ] && \
+            [ $force_cells -le 20000 ]
+        then
+            force_cells=$force_cells
+        else
+            echo "Argument force-cells must be an integer in the range"\
+                 "[1,20000]." >&2
+            exit 1
+        fi
+    else
+        force_cells="null"
+    fi
+
+    # --soft_min_avg_ploidy
+    # positive floating point number
+    if [ -n "$soft_min_avg_ploidy" ]; then
+        if [[ $soft_min_avg_ploidy =~ $float_re ]] && \
+            (( $(echo "$soft_min_avg_ploidy > 0" | bc -l) ))
+        then
+            min_ploidy=$soft_min_avg_ploidy
+        else
+            echo "Argument soft-min-avg-ploidy must be a positive real number" \
+                >&2
+            exit 1
+        fi
+    else
+        min_ploidy="null"
+    fi
+
+    # --soft_max_avg_ploidy
+    # positive floating point number
+    if [ -n "$soft_max_avg_ploidy" ]; then
+        if [[ $soft_max_avg_ploidy =~ $float_re ]] && \
+            [[ $(echo "$soft_max_avg_ploidy > 0" | bc -l) ]] && \
+            (( $(echo "$soft_max_avg_ploidy < 8" | bc -l) ))
+        then
+            max_ploidy=$soft_max_avg_ploidy
+        else
+            echo "Argument soft-max-avg-ploidy must be a positive real number"\
+                "and less than 8.0" >&2
+            exit 1
+        fi
+    else
+        max_ploidy="null"
+    fi
+
+    # check min & max avg_ploidy options
+    if [[ $max_ploidy != "null" ]] && [[ $min_ploidy != "null" ]] && \
+        (( $(echo "$soft_max_avg_ploidy <= $soft_min_avg_ploidy" | bc -l) ))
+    then
+        echo "Argument soft-min-avg-ploidy must be less than"\
+            "soft-max-avg-ploidy" >&2
+        exit 1
+    fi
+
+    # check that multiple downsampling options are not provided
+    if ( ! [ -z $downsample ] ) && ( ! [ -z $maxreads ] ) ; then
+        echo "Please supply only one of the options downsample or maxreads." >&2
+        exit 1
+    fi
+
+    # downsample
+    # positive floating point number
+    if [ -n "$downsample" ]; then
+        if [[ $downsample =~ $float_re ]] ; then
+            downsample="{ \"gigabases\": $downsample }"
+        else
+            echo "Argument downsample must be a positive real number." \
+                >&2
+            exit 1
+        fi
+    elif [ -n "$maxreads" ]; then
+        # maxreads
+        # positive floating point number
+        if [[ $maxreads =~ $int_re ]] && [ $maxreads -gt 0 ]; then
+            downsample="{ \"target_reads\": $maxreads }"
+        else
+            echo "Argument maxreads must be a positive integer." \
+                >&2
+            exit 1
+        fi
+    else
+        downsample=null
+    fi
+}
+

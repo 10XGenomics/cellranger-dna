@@ -1,0 +1,65 @@
+#
+# Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+#
+@include "_aligner_stages.mro"
+@include "_genome_annotator_stages.mro"
+
+pipeline _GENOME_ANNOTATOR(
+    in  string reference_path  "this is the reference_path",
+    in  bed    targets         "this is the targets file",
+    in  int    window_size,
+    in  json   insert_sizes,
+    in  json   basic_stats,
+    out h5     tracks,
+)
+{
+    call SAMPLE_REFERENCE(
+        reference_path  = self.reference_path,
+        basic_stats     = self.basic_stats,
+        insert_sizes    = self.insert_sizes,
+        window_size     = self.window_size,
+        target_coverage = 1,
+    ) using (
+        volatile = true,
+    )
+
+    call ALIGN(
+        aligner           = "bwa",
+        aligner_method    = "MEM",
+        reference_path    = self.reference_path,
+        read_group_sample = "x",
+        num_threads       = 4,
+        chunks            = SAMPLE_REFERENCE.chunks,
+    ) using (
+        volatile = true,
+    )
+
+    call CREATE_GENOME_TRACKS(
+        reference_path = self.reference_path,
+        window_size    = self.window_size,
+    ) using (
+        volatile = true,
+    )
+
+    call ANALYZE_OUTPUT(
+        reference_path  = self.reference_path,
+        samples_per_bin = SAMPLE_REFERENCE.samples_per_bin,
+        bams            = ALIGN,
+        window_size     = self.window_size,
+    ) using (
+        volatile = true,
+    )
+
+    call AGGREGATE_TRACKS(
+        confident_windows = null,
+        targets           = self.targets,
+        genome_tracks     = CREATE_GENOME_TRACKS.tracks,
+        map_track         = ANALYZE_OUTPUT.mappability,
+    ) using (
+        volatile = true,
+    )
+
+    return (
+        tracks = AGGREGATE_TRACKS.tracks,
+    )
+}

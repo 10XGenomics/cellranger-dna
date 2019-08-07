@@ -1,0 +1,55 @@
+filetype html;
+filetype txt;
+filetype json;
+filetype csv;
+filetype bed;
+filetype h5;
+
+stage REPORT_BASIC_SUMMARY(
+    in  string reference_path,
+    in  csv    barnyard,
+    in  json   singlecell_summary,
+    in  bed    node_cnv_calls,
+    in  json   report_basic,
+    in  h5     norm_node_profiles,
+    in  h5     node_cnv_tracks,
+    out csv    per_cell_summary_metrics,
+    out json   summary,
+    out csv    summary_cs,
+    src py     "stages/reporter/report_basic_summary",
+)
+
+stage MAKE_WEBSUMMARY(
+    in  string reference_path,
+    in  string sample_id,
+    in  string sample_desc,
+    in  map[]  sample_def,
+    in  csv    barnyard,
+    in  csv    per_cell_summary_metrics,
+    in  json   summary,
+    in  json   alarms,
+    out html   websummary,
+    src py     "stages/reporter/make_websummary",
+)
+
+stage COMPILE_CNV_DATA(
+    in  string reference_path,
+    in  h5     tracks,
+    in  h5     raw_profiles,
+    in  h5     raw_node_profiles,
+    in  h5     norm_node_profiles,
+    in  h5     node_cnv_tracks,
+    in  h5     tree_data,
+    out h5     cnv_data,
+    src py     "stages/postprocessing/compile_cnv_data",
+) split (
+)
+
+stage MAKE_ALARMS(
+    in  json   summary,
+    in  string sample_id,
+    in  string reference_path,
+    out json   alarms,
+    out txt    alarms_summary,
+    src py     "stages/postprocessing/check_alarms",
+)

@@ -1,0 +1,24 @@
+#
+# Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+#
+filetype json;
+filetype h5;
+
+stage CLUSTER_CELLS(
+    in  h5     cnv_tracks,
+    in  h5     tracks,
+    in  string reference_path,
+    out h5     data,
+    src py     "stages/cluster_breakpoints/cluster_cells",
+) split (
+)
+
+stage CREATE_NODE_PROFILES(
+    in  string reference_path,
+    in  h5     profiles,
+    in  h5     cluster_data,
+    out h5     node_profiles,
+    out h5     internal_node_profiles,
+    src py     "stages/cluster_breakpoints/create_node_profiles",
+) split (
+)

@@ -1,0 +1,26 @@
+@include "_bcsorter_stages.mro"
+
+pipeline _BCSORTER(
+    in  bam input,
+    out bam bcsorted_bam,
+)
+{
+    call BUCKET_BY_BC(
+        nbases = 2,
+        input  = self.input,
+    ) using (
+        volatile = true,
+    )
+
+    call SORT_BY_BC(
+        bc_buckets    = BUCKET_BY_BC.buckets,
+        non_bc_bams   = BUCKET_BY_BC.non_bc_bams,
+        possorted_bam = self.input,
+    ) using (
+        volatile = true,
+    )
+
+    return (
+        bcsorted_bam = SORT_BY_BC.bcsorted_bam,
+    )
+}

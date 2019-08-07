@@ -1,0 +1,75 @@
+@include "_postprocessing_stages.mro"
+
+pipeline _POSTPROCESSING(
+    in  string reference_path,
+    in  string sample_id,
+    in  string sample_desc,
+    in  map[]  sample_def,
+    in  csv    barnyard,
+    in  json   singlecell_summary,
+    in  bed    node_cnv_calls,
+    in  json   report_basic,
+    in  h5     tracks,
+    in  h5     raw_profiles,
+    in  h5     norm_node_profiles,
+    in  h5     raw_node_profiles,
+    in  h5     node_cnv_tracks,
+    in  h5     tree_data,
+    out csv    per_cell_summary_metrics,
+    out json   summary,
+    out csv    summary_cs,
+    out html   web_summary,
+    out h5     cnv_data,
+    out json   alarms,
+    out txt    alarms_summary,
+)
+{
+    call REPORT_BASIC_SUMMARY(
+        reference_path     = self.reference_path,
+        barnyard           = self.barnyard,
+        singlecell_summary = self.singlecell_summary,
+        node_cnv_calls     = self.node_cnv_calls,
+        report_basic       = self.report_basic,
+        norm_node_profiles = self.norm_node_profiles,
+        node_cnv_tracks    = self.node_cnv_tracks,
+    )
+
+    call COMPILE_CNV_DATA(
+        reference_path     = self.reference_path,
+        tracks             = self.tracks,
+        raw_profiles       = self.raw_profiles,
+        raw_node_profiles  = self.raw_node_profiles,
+        norm_node_profiles = self.norm_node_profiles,
+        node_cnv_tracks    = self.node_cnv_tracks,
+        tree_data          = self.tree_data,
+    ) using (
+        volatile = true,
+    )
+
+    call MAKE_ALARMS(
+        reference_path = self.reference_path,
+        sample_id      = self.sample_id,
+        summary        = REPORT_BASIC_SUMMARY.summary,
+    )
+
+    call MAKE_WEBSUMMARY(
+        barnyard                 = self.barnyard,
+        per_cell_summary_metrics = REPORT_BASIC_SUMMARY.per_cell_summary_metrics,
+        reference_path           = self.reference_path,
+        sample_id                = self.sample_id,
+        sample_desc              = self.sample_desc,
+        sample_def               = self.sample_def,
+        alarms                   = MAKE_ALARMS.alarms,
+        summary                  = REPORT_BASIC_SUMMARY.summary,
+    )
+
+    return (
+        per_cell_summary_metrics = REPORT_BASIC_SUMMARY.per_cell_summary_metrics,
+        summary                  = REPORT_BASIC_SUMMARY.summary,
+        summary_cs               = REPORT_BASIC_SUMMARY.summary_cs,
+        web_summary              = MAKE_WEBSUMMARY.websummary,
+        cnv_data                 = COMPILE_CNV_DATA.cnv_data,
+        alarms                   = MAKE_ALARMS.alarms,
+        alarms_summary           = MAKE_ALARMS.alarms_summary,
+    )
+}

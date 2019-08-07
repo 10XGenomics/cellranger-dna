@@ -1,0 +1,81 @@
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+@include "_reporter_stages.mro"
+@include "_reporter_singlecell_stages.mro"
+@include "_genome_annotator.mro"
+
+pipeline _REPORTER_SINGLECELL(
+    in  bam    bcsorted_bam,
+    in  bam    possorted_bam,
+    in  string reference_path      "this is the reference_path",
+    in  bed    targets             "this is the targets file",
+    in  string barcode_whitelist   "name of barcode set",
+    in  map    cell_barcodes,
+    in  int    profile_bin_size,
+    in  json   duplicate_summary,
+    out json   singlecell_results,
+    out csv    barnyard,
+    out csv    barnyard_hits,
+    out json   basic_summary,
+    out h5     barcode_counts,
+    out json   insert_sizes,
+    out json   target_dists,
+    out json   mapq_counts,
+    out json   barcode_histogram,
+    out h5     profiles,
+    out h5     tracks,
+    out bed    mappable_regions,
+)
+{
+    call REPORT_BASIC(
+        input             = self.bcsorted_bam,
+        input_pos         = self.possorted_bam,
+        targets_file      = self.targets,
+        barcode_whitelist = self.barcode_whitelist,
+    ) using (
+        volatile = true,
+    )
+
+    call _GENOME_ANNOTATOR(
+        reference_path = self.reference_path,
+        targets        = self.targets,
+        window_size    = self.profile_bin_size,
+        insert_sizes   = REPORT_BASIC.insert_sizes,
+        basic_stats    = REPORT_BASIC.summary,
+    )
+
+    call MAKE_PROFILES(
+        reference_path = self.reference_path,
+        window_size    = self.profile_bin_size,
+        possorted      = self.possorted_bam,
+        tracks         = _GENOME_ANNOTATOR.tracks,
+        cell_barcodes  = self.cell_barcodes,
+    ) using (
+        volatile = true,
+    )
+
+    call REPORT_SINGLECELL(
+        cell_barcodes     = self.cell_barcodes,
+        input             = self.bcsorted_bam,
+        barcode_whitelist = self.barcode_whitelist,
+        reference_path    = self.reference_path,
+        profiles          = MAKE_PROFILES.profiles,
+        duplicate_summary = self.duplicate_summary,
+    )
+
+    return (
+        singlecell_results = REPORT_SINGLECELL.summary,
+        barnyard           = REPORT_SINGLECELL.barnyard,
+        barnyard_hits      = REPORT_SINGLECELL.barnyard_hits,
+        barcode_histogram  = REPORT_SINGLECELL.barcode_histogram,
+        basic_summary      = REPORT_BASIC.summary,
+        barcode_counts     = REPORT_BASIC.barcode_counts,
+        insert_sizes       = REPORT_BASIC.insert_sizes,
+        target_dists       = REPORT_BASIC.target_dists,
+        mapq_counts        = REPORT_BASIC.mapq_counts,
+        profiles           = MAKE_PROFILES.profiles,
+        tracks             = _GENOME_ANNOTATOR.tracks,
+        mappable_regions   = MAKE_PROFILES.mappable_regions,
+    )
+}

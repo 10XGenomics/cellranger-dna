@@ -1,0 +1,32 @@
+#
+# Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+#
+filetype json;
+filetype h5;
+filetype pdf;
+filetype bed;
+filetype txt;
+
+stage AGGREGATE_NODES(
+    in  string reference_path,
+    in  h5     tracks,
+    in  h5     internal_cnv_tracks,
+    in  h5     sc_cnv_tracks,
+    in  bed    internal_cnv_calls,
+    in  bed    sc_cnv_calls,
+    in  bed    internal_unmerged_cnv_calls,
+    in  bed    sc_unmerged_cnv_calls,
+    in  json   sc_gc_params,
+    in  json   internal_gc_params,
+    in  h5     sc_norm_profiles,
+    in  h5     internal_norm_profiles,
+    in  h5     tree_data,
+    out json   node_gc_params,
+    out h5     norm_node_profiles,
+    out h5     node_cnv_tracks,
+    out bed    node_cnv_calls,
+    out bed    node_unmerged_cnv_calls,
+    out h5     tree_data,
+    src py     "stages/cluster_breakpoints/aggregate_nodes",
+) split (
+)

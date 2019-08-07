@@ -1,0 +1,162 @@
+#!/usr/bin/env python
+#
+# Copyright (c) 2016 10x Genomics, Inc. All rights reserved.
+#
+import os
+import sys
+import subprocess
+import docopt
+import shutil
+import gzip
+
+from longranger.cnv import contig_manager
+
+VERSION = "%s %s %s\n%s" % (os.getenv('TENX_PRODUCT', ''), os.getenv('TENX_SUBCMD', ''), os.getenv('TENX_VERSION', ''), os.getenv('TENX_COPYRIGHT', ''))
+
+__doc__ = '''
+10x reference preparation tool for Cell Ranger DNA.
+
+Build a Cell Ranger DNA-compatible reference folder from a user-supplied
+FASTA file. Creates a new folder named after the FASTA file.
+
+Steps include:
+  1. Create new reference folder
+  2. Copy original FASTA into folder
+  3. Index for samtools
+  4. Index for pyfasta
+  5. Index for bwa
+
+The commands below should be preceded by 'cellranger-dna':
+
+Usage:
+    mkref <fasta_file> <contig_defs_file> [--gtf=<file.gtf.gz>]
+    mkref -h | --help | --version
+
+Arguments:
+    fasta_file       Path to FASTA file containing your reference.
+    contig_defs_file Path to a JSON file describing primary contigs.
+
+Options:
+    --gtf=<file.gtf.gz>       Optional gzipped GTF file with gene annotations.
+    -h --help   Show this message.
+    --version   Show version.
+----
+%s
+''' % VERSION
+
+
+def error(msg):
+    print msg
+    sys.exit(1)
+
+def fixpath(path):
+    return os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
+
+args = docopt.docopt(__doc__, version=VERSION)
+fasta_path = fixpath(args["<fasta_file>"])
+contig_defs_path = fixpath(args["<contig_defs_file>"])
+gtf_file = None
+if args["--gtf"]:
+    gtf_file = fixpath(args["--gtf"])
+
+# Verify input fasta file exists
+if not os.path.exists(fasta_path):
+    error("Input FASTA file does not exist: %s" % fasta_path)
+
+if not os.path.isfile(fasta_path):
+    error("Please provide a FASTA file, not a directory: %s" % fasta_path)
+
+# Check for write permissions in current directory
+if not os.access(os.getcwd(), os.W_OK):
+    error("You do not have write permission in the current working directory.")
+
+# Parse name of new reference
+basename = os.path.basename(os.path.abspath(fasta_path))
+ref_name, ext = os.path.splitext(basename)
+
+# Create the target reference folder path
+ref_folder = "refdata-"+ref_name
+ref_path = os.path.join(os.getcwd(), ref_folder)
+
+# Check that destination folder doesn't already exist 
+if os.path.exists(ref_path):
+    error("Destination reference folder already exists: %s\nPlease delete and start again." % ref_path)
+
+# Create reference folder structure
+print "Creating new reference folder at ./refdata-%s/" % ref_name
+os.mkdir(ref_path)
+os.mkdir(os.path.join(ref_path, "fasta"))
+os.mkdir(os.path.join(ref_path, "genes"))
+os.mkdir(os.path.join(ref_path, "regions"))
+os.mkdir(os.path.join(ref_path, "snps"))
+
+# Write out genome identifier
+with open(os.path.join(ref_path, "genome"), "w") as f:
+    f.write(ref_name+"\n")
+
+# Copy fasta file into fasta folder as genome.fa
+print "Copying original fasta file into reference folder...",
+new_fasta = os.path.join(ref_path, "fasta", "genome.fa")
+shutil.copy(fasta_path, new_fasta)
+os.chmod(new_fasta, 0644)
+print "done.\n"
+
+print "Generating samtools index...",
+if subprocess.call(['samtools', 'faidx', new_fasta]) != 0:
+    error("Could not generate samtools index")
+print "done.\n"
+
+print "Verifying contig definitions file...",
+err = contig_manager.verify_contig_defs(contig_defs_path, os.path.join(ref_path, "fasta", "genome.fa.fai"))
+if err != None:
+    error(err)
+shutil.copy(contig_defs_path, os.path.join(ref_path, "fasta", "contig-defs.json"))
+print "done.\n"
+
+
+if (gtf_file):
+    print "Verifying gtf file...",
+    cmd = ['bedtools', 'sample', '-n', '1', '-i', gtf_file]
+    if subprocess.call(cmd, stdout=open("/dev/null")) != 0:
+        error("Could not parse the provided GTF/GFF file")
+    print "done.\n"
+
+    is_gzipped = True
+    try:
+        with gzip.open(gtf_file, "rb") as fh:
+            data = fh.read(1024)
+    except IOError:
+        is_gzipped = False
+
+    print "Copying gtf file...",
+    gtf_dest = os.path.join(ref_path, "genes", "gene_annotations.gtf.gz")
+    if is_gzipped:
+        shutil.copy(gtf_file, gtf_dest)
+    else:
+        print "and gzipping...",
+        with open(gtf_dest, "wb") as fh:
+            if subprocess.call(['gzip', '-c', gtf_file], stdout=fh) != 0:
+                error("Could not gzip the provided GTF/GFF file into place")
+    print "done.\n"
+
+
+print "Generating pyfasta indexes...",
+import pyfasta
+pyf = pyfasta.Fasta(new_fasta)
+contigs = len(pyf)
+size = sum(len(pyf[contig]) for contig in pyf)
+del pyf
+print "done."
+print "    Number of contigs: %d\n    Total genome size: %d\n" % (contigs, size)
+
+print "Generating bwa index (may take over an hour for a 3Gb genome)..."
+if subprocess.call(['bwa', 'index', new_fasta]) != 0:
+    error("Could not generate bwa index")
+print "...done.\n"
+
+print ">>> Reference successfully created! <<<\n"
+print "You can now specify this reference in your environment or on the command line:"
+print "export TENX_REFDATA=%s" % ref_path
+print "- or -"
+print "cellranger-dna cnv --reference=%s ..." % ref_path
+

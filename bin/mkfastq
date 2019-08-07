@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#
+# Copyright (c) 2018 10x Genomics, Inc.  All rights reserved.
+#
+# Wrapper for running MAKE_FASTQS_CS with mrp, with appropriate
+# Long Ranger Chromium settings.
+
+BARCODE_PATH=`echo  'import barcodes.utils;print barcodes.utils.barcode_whitelist_path("737K-crdna-v1")' | python`
+function implement_read_configuration {
+    TENX_BC_READ_TYPE=R1 \
+    TENX_BC_LENGTH=16 \
+    TENX_SI_READ_TYPE=I1 \
+    TENX_BARCODE_WHITELIST=$BARCODE_PATH
+}
+
+source _mkfastq

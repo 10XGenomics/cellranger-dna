@@ -1,0 +1,26 @@
+.alert-container {
+  padding-bottom: 12px;
+}
+
+.alert-header {
+  margin-bottom: 0;
+}
+
+.alert-analysis {
+  margin-bottom: 1rem;
+}
+
+@mixin alert-icon-color($color) {
+  fill: $color;
+  height: 0.825rem;
+  margin-right: 0.25rem;
+  margin-left: 0.125rem;
+}
+
+.alert-warningIcon {
+  @include alert-icon-color($brand-yellow);
+}
+
+.alert-errorIcon {
+  @include alert-icon-color($brand-red);
+}

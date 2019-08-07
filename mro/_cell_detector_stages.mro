@@ -1,0 +1,24 @@
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype bam;
+filetype bam.bai;
+filetype json;
+filetype tsv;
+
+stage DETECT_CELL_BARCODES(
+    in  string reference_path,
+    in  bam    input,
+    in  string barcode_whitelist,
+    in  float  high_outlier_percentile_prior,
+    in  float  log_width,
+    in  int    force_cells,
+    out map    cell_barcodes,
+    out map    counts,
+    src py     "stages/reporter/detect_cell_barcodes",
+) split (
+    in  string chunk_start,
+    in  string chunk_end,
+) using (
+    mem_gb = 8,
+)

@@ -1,0 +1,22 @@
+.metric-number {
+  font-size: 3rem;
+  line-height: 3rem;
+}
+
+.metric-threshold-pass {
+  color: $brand-green;
+}
+
+.metric-threshold-warn {
+  color: $brand-yellow;
+}
+
+.metric-threshold-error {
+  color: $brand-red;
+
+}
+
+.metric-wrapper {
+  margin: 1rem 0;
+  text-align: center;
+}

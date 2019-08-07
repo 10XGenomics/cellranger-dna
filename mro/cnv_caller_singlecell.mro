@@ -1,0 +1,208 @@
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+@include "_aligner.mro"
+@include "_reporter_singlecell.mro"
+@include "_cell_detector.mro"
+@include "_breakpoint_pipeline.mro"
+@include "_postprocessing.mro"
+@include "_dloupe_stages.mro"
+@include "_preflight_stages.mro"
+
+pipeline CNV_CALLER_SINGLECELL(
+    in  string  fastq_mode                "configuration of the input fastqs",
+    in  string  sample_id,
+    in  string  sample_desc,
+    in  map[]   sample_def,
+    in  map     downsample,
+    in  string  reference_path,
+    in  string  sex,
+    in  bed     targets,
+    in  int     trim_length               "this is the trim length",
+    in  string  barcode_whitelist         "barcode whitelist file",
+    in  map     cnv_params                "CNV calling parameters",
+    in  int     force_cells               "force cell detection",
+    #
+    # needs to be cleaned toward customer-facing
+    out csv     barnyard,
+    # move to PD
+    out csv     barnyard_hits,
+    out bam     possorted_bam,
+    out bam.bai possorted_bam_index,
+    # not to be included in CNV_CALLER_SINGLECELL_CS
+    out bam     bcsorted_bam,
+    # move to PD
+    out json    duplicate_summary,
+    # move to PD
+    out h5      barcode_counts,
+    # move to PD
+    out json    downsample_info,
+    # can be removed
+    out h5      profiles,
+    # move to PD
+    out json    basic_results,
+    # move to PD
+    out json    singlecell_results,
+    # move to PD
+    out json    mapq_counts,
+    # move to PD
+    out json    barcode_histogram,
+    # probably keep
+    out json    insert_sizes,
+    # move to PD
+    out json    target_dists,
+    out h5      tracks,
+    # need to switch to third party format?
+    out h5      tree_data,
+    # not to be included in CNV_CALLER_SINGLECELL_CS
+    out h5      raw_node_profiles,
+    # proposal is to include raw and normalized profiles in a python/R friendly file
+    out h5      norm_node_profiles,
+    out h5      node_cnv_tracks,
+    out bed     node_cnv_calls,
+    # not to be included in CNV_CALLER_SINGLECELL_CS
+    out json    node_gc_norm_params,
+    out bed     node_unmerged_cnv_calls,
+    out bed     mappable_regions,
+    out csv     per_cell_summary_metrics,
+    out json    summary_json,
+    out csv     summary_cs,
+    out html    web_summary,
+    out h5      cnv_data_cs,
+    out dloupe  dloupe,
+    out json    alarms,
+    out txt     alarms_summary,
+)
+{
+    call CNV_CALLER_PREFLIGHT as CNV_CALLER_PREFLIGHT_LOCAL(
+        sample_id         = self.sample_id,
+        fastq_mode        = self.fastq_mode,
+        sample_def        = self.sample_def,
+        reference_path    = self.reference_path,
+        force_cells       = self.force_cells,
+        cnv_params        = self.cnv_params,
+        downsample        = self.downsample,
+        check_executables = false,
+    ) using (
+        local     = true,
+        preflight = true,
+    )
+
+    call CNV_CALLER_PREFLIGHT(
+        sample_id         = self.sample_id,
+        fastq_mode        = self.fastq_mode,
+        sample_def        = self.sample_def,
+        reference_path    = self.reference_path,
+        force_cells       = self.force_cells,
+        cnv_params        = self.cnv_params,
+        downsample        = self.downsample,
+        check_executables = true,
+    ) using (
+        preflight = true,
+    )
+
+    call _ALIGNER(
+        sample_id         = self.sample_id,
+        fastq_mode        = self.fastq_mode,
+        sample_def        = self.sample_def,
+        read_group_sample = self.sample_id,
+        trim_length       = self.trim_length,
+        reference_path    = self.reference_path,
+        barcode_whitelist = self.barcode_whitelist,
+        targets           = self.targets,
+        downsample        = self.downsample,
+    )
+
+    call _CELL_DETECTOR(
+        reference_path    = self.reference_path,
+        barcode_whitelist = self.barcode_whitelist,
+        bcsorted_bam      = _ALIGNER.bcsorted_bam,
+        force_cells       = self.force_cells,
+    )
+
+    call _REPORTER_SINGLECELL(
+        bcsorted_bam      = _ALIGNER.bcsorted_bam,
+        possorted_bam     = _ALIGNER.possorted_bam,
+        reference_path    = self.reference_path,
+        cell_barcodes     = _CELL_DETECTOR.cell_barcodes,
+        targets           = self.targets,
+        barcode_whitelist = self.barcode_whitelist,
+        profile_bin_size  = 20000,
+        duplicate_summary = _ALIGNER.duplicate_summary,
+    )
+
+    call _BREAKPOINT_PIPELINE(
+        sex             = self.sex,
+        reference_path  = self.reference_path,
+        raw_sc_profiles = _REPORTER_SINGLECELL.profiles,
+        params          = self.cnv_params,
+        tracks          = _REPORTER_SINGLECELL.tracks,
+    )
+
+    call _POSTPROCESSING(
+        sample_desc        = self.sample_desc,
+        sample_id          = self.sample_id,
+        sample_def         = self.sample_def,
+        reference_path     = self.reference_path,
+        barnyard           = _REPORTER_SINGLECELL.barnyard,
+        singlecell_summary = _REPORTER_SINGLECELL.singlecell_results,
+        tracks             = _REPORTER_SINGLECELL.tracks,
+        raw_profiles       = _REPORTER_SINGLECELL.profiles,
+        norm_node_profiles = _BREAKPOINT_PIPELINE.normalized_node_profiles,
+        raw_node_profiles  = _BREAKPOINT_PIPELINE.raw_node_profiles,
+        node_cnv_calls     = _BREAKPOINT_PIPELINE.node_cnv_calls,
+        report_basic       = _REPORTER_SINGLECELL.basic_summary,
+        node_cnv_tracks    = _BREAKPOINT_PIPELINE.node_cnv_tracks,
+        tree_data          = _BREAKPOINT_PIPELINE.tree_data,
+    )
+
+    call DLOUPE_PREPROCESS(
+        sample_id                = self.sample_id,
+        sample_desc              = self.sample_desc,
+        reference_path           = self.reference_path,
+        # must agree with _REPORTER_SINGLECELL.profile_bin_size
+        profile_bin_size         = 20000,
+        normalized_node_profiles = _BREAKPOINT_PIPELINE.normalized_node_profiles,
+        node_cnv_calls           = _BREAKPOINT_PIPELINE.node_cnv_calls,
+        tree_data                = _BREAKPOINT_PIPELINE.tree_data,
+        tracks                   = _REPORTER_SINGLECELL.tracks,
+        per_cell_summary_metrics = _POSTPROCESSING.per_cell_summary_metrics,
+    ) using (
+        volatile = true,
+    )
+
+    return (
+        possorted_bam            = _ALIGNER.possorted_bam,
+        possorted_bam_index      = _ALIGNER.possorted_bam_index,
+        bcsorted_bam             = _ALIGNER.bcsorted_bam,
+        duplicate_summary        = _ALIGNER.duplicate_summary,
+        barcode_counts           = _REPORTER_SINGLECELL.barcode_counts,
+        barnyard                 = _REPORTER_SINGLECELL.barnyard,
+        barnyard_hits            = _REPORTER_SINGLECELL.barnyard_hits,
+        profiles                 = _REPORTER_SINGLECELL.profiles,
+        basic_results            = _REPORTER_SINGLECELL.basic_summary,
+        insert_sizes             = _REPORTER_SINGLECELL.insert_sizes,
+        singlecell_results       = _REPORTER_SINGLECELL.singlecell_results,
+        target_dists             = _REPORTER_SINGLECELL.target_dists,
+        mapq_counts              = _REPORTER_SINGLECELL.mapq_counts,
+        downsample_info          = _ALIGNER.downsample_info,
+        barcode_histogram        = _REPORTER_SINGLECELL.barcode_histogram,
+        tracks                   = _REPORTER_SINGLECELL.tracks,
+        mappable_regions         = _REPORTER_SINGLECELL.mappable_regions,
+        tree_data                = _BREAKPOINT_PIPELINE.tree_data,
+        raw_node_profiles        = _BREAKPOINT_PIPELINE.raw_node_profiles,
+        norm_node_profiles       = _BREAKPOINT_PIPELINE.normalized_node_profiles,
+        node_cnv_tracks          = _BREAKPOINT_PIPELINE.node_cnv_tracks,
+        node_cnv_calls           = _BREAKPOINT_PIPELINE.node_cnv_calls,
+        node_unmerged_cnv_calls  = _BREAKPOINT_PIPELINE.node_unmerged_cnv_calls,
+        node_gc_norm_params      = _BREAKPOINT_PIPELINE.node_gc_params,
+        per_cell_summary_metrics = _POSTPROCESSING.per_cell_summary_metrics,
+        summary_json             = _POSTPROCESSING.summary,
+        summary_cs               = _POSTPROCESSING.summary_cs,
+        web_summary              = _POSTPROCESSING.web_summary,
+        cnv_data_cs              = _POSTPROCESSING.cnv_data,
+        dloupe                   = DLOUPE_PREPROCESS.output_for_dloupe,
+        alarms                   = _POSTPROCESSING.alarms,
+        alarms_summary           = _POSTPROCESSING.alarms_summary,
+    )
+}

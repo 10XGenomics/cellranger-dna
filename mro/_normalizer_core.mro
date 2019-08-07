@@ -1,0 +1,55 @@
+#
+# Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+#
+@include "_normalizer_core_stages.mro"
+
+pipeline _NORMALIZER_CORE(
+    in  h5     raw_profiles,
+    in  string reference_path,
+    in  h5     tracks,
+    in  bool   is_singlecell,
+    #
+    out json   gc_norm_params,
+    out h5     normalized_profiles,
+)
+{
+    # ..........................................................................
+    # Stage 1: Estimate linear and quadratic GC bias coefficients and scale
+    call ESTIMATE_NORMALIZATION_PARAMETERS(
+        raw_profiles   = self.raw_profiles,
+        tracks         = self.tracks,
+        reference_path = self.reference_path,
+    ) using (
+        volatile = true,
+    )
+
+    #
+    # ..........................................................................
+    # Stage 2: Use the normalization module
+    call NORMALIZE_PROFILES(
+        raw_profiles   = self.raw_profiles,
+        tracks         = self.tracks,
+        reference_path = self.reference_path,
+        gc_norm_params = ESTIMATE_NORMALIZATION_PARAMETERS.gc_norm_params,
+    ) using (
+        volatile = true,
+    )
+
+    #
+    # ..........................................................................
+    # Stage 3: write normalization metrics into the norm_profiles.h5
+    call REPORT_NORMALIZATION(
+        raw_profiles              = self.raw_profiles,
+        normalized_profiles       = NORMALIZE_PROFILES.normalized_profiles,
+        reference_path            = self.reference_path,
+        normalization_window_size = 100000,
+        is_singlecell             = self.is_singlecell,
+    ) using (
+        volatile = true,
+    )
+
+    return (
+        gc_norm_params      = ESTIMATE_NORMALIZATION_PARAMETERS.gc_norm_params,
+        normalized_profiles = REPORT_NORMALIZATION.normalized_profiles,
+    )
+}

@@ -1,0 +1,24 @@
+#
+# Copyright (c) 2018 10x Genomics, Inc.  All rights reserved.
+#
+filetype bed;
+filetype csv;
+filetype dloupe;
+filetype json;
+filetype h5;
+
+stage DLOUPE_PREPROCESS(
+    in  string sample_id,
+    in  string sample_desc,
+    in  string reference_path,
+    in  int    profile_bin_size,
+    in  h5     normalized_node_profiles,
+    in  bed    node_cnv_calls,
+    in  h5     tree_data,
+    in  h5     tracks,
+    in  csv    per_cell_summary_metrics,
+    out dloupe output_for_dloupe,
+    out json   contig_info_json,
+    src py     "stages/dloupe/dloupe_preprocess",
+) split (
+)

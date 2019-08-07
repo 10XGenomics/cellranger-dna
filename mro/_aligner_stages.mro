@@ -1,0 +1,125 @@
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype fastq;
+filetype bam;
+filetype bam.bai;
+filetype bed;
+filetype json;
+filetype fastq.gz;
+filetype txt;
+
+stage SETUP_CHUNKS(
+    in  string   sample_id,
+    in  map[]    sample_def              "list of dictionary specifying input data",
+    in  string   input_mode              "configuration of the input fastqs",
+    in  string   barcode_whitelist,
+    in  map      downsample,
+    out map[]    chunks                  "map has barcode, barcode_reverse_complement, sample_index, read1, read2, gem_group, an
+d read group fields",
+    out string[] read_groups             "list of strings representing read groups",
+    out json     downsample_info,
+    out txt      barcode_whitelist_path,
+    out int      requested_read_pairs,
+    src py       "stages/reads/setup_chunks",
+)
+
+stage TRIM_READS(
+    in  map[]  chunks,
+    in  string barcode_whitelist,
+    in  int    max_read_num,
+    in  int    read1_trim_length  "this is the trim length",
+    in  int    read2_trim_length,
+    out map[]  chunks,
+    out fastq  placeholder,
+    out json   bc_counts,
+    out json   lot_info,
+    src py     "stages/reads/trim_reads",
+) split (
+    in  map    chunk,
+)
+
+stage ALIGN(
+    in  map[]  chunks,
+    in  string aligner,
+    in  string aligner_method,
+    in  string reference_path,
+    in  string read_group_sample,
+    in  int    num_threads,
+    out bam[],
+    src py     "stages/reads/align_reads",
+) split (
+    in  map    chunk,
+    out bam    output,
+)
+
+stage ATTACH_BCS(
+    in  string barcode_whitelist,
+    in  bam[]  align,
+    in  map[]  chunks,
+    in  bool   paired_end,
+    in  bool   exclude_non_bc_reads,
+    in  float  bc_confidence_threshold,
+    in  json   bc_counts,
+    out bam[]  outputs,
+    out int    perfect_read_count,
+    src py     "stages/reads/attach_bcs",
+) split (
+    in  bam    align_chunk,
+    in  map    chunk,
+    in  int    chunk_index,
+    out bam    output,
+)
+
+stage SORT_BY_POS(
+    in  bam[] inputs,
+    out bam,
+    out int   perfect_read_count,
+    src py    "stages/reads/sort_reads",
+) split (
+    in  bam   chunk_input,
+)
+
+stage ESTIMATE_DIFFUSION_DUPS(
+    in  bam    input,
+    out json   summary,
+    src py     "stages/reads/estimate_diffusion_dups",
+) split (
+    in  int    seed,
+    in  map    lane_map,
+    in  map    flowcell_geometry,
+    in  string chunk_start,
+    in  string chunk_end,
+) using (
+    mem_gb = 8,
+)
+
+stage MARK_DUPLICATES(
+    in  bam     input,
+    in  int     perfect_read_count,
+    in  bed     targets_file,
+    in  json    diffusion_dup_summary,
+    in  bool    write_bam,
+    out bam     output,
+    out bam.bai index,
+    out json    duplicate_summary,
+    src py      "stages/reads/mark_duplicates",
+) split (
+    in  map     lane_map,
+    in  string  chunk_start,
+    in  string  chunk_end,
+    in  int     chunk_index,
+    in  float   diffusion_threshold,
+) using (
+    mem_gb = 8,
+)
+
+stage COPY_BAM(
+    in  bam     input,
+    in  bam.bai input_index,
+    in  json    duplicate_summary,
+    out bam     output,
+    out bam.bai output_index,
+    out json    duplicate_summary,
+    src py      "stages/reads/copy_bam",
+)
