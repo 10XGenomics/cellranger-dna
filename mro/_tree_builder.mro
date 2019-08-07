@@ -1,0 +1,37 @@
+#
+# Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+#
+@include "_tree_builder_stages.mro"
+
+pipeline _TREE_BUILDER(
+    in  h5     cnv_tracks,
+    in  h5     profiles,
+    in  h5     tracks,
+    in  string reference_path,
+    out h5     tree_data,
+    out h5     node_profiles,
+    out h5     internal_node_profiles,
+)
+{
+    call CLUSTER_CELLS(
+        reference_path = self.reference_path,
+        cnv_tracks     = self.cnv_tracks,
+        tracks         = self.tracks,
+    ) using (
+        volatile = true,
+    )
+
+    call CREATE_NODE_PROFILES(
+        reference_path = self.reference_path,
+        profiles       = self.profiles,
+        cluster_data   = CLUSTER_CELLS.data,
+    ) using (
+        volatile = true,
+    )
+
+    return (
+        tree_data              = CLUSTER_CELLS.data,
+        node_profiles          = CREATE_NODE_PROFILES.node_profiles,
+        internal_node_profiles = CREATE_NODE_PROFILES.internal_node_profiles,
+    )
+}

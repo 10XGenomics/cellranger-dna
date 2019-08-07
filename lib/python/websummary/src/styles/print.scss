@@ -1,0 +1,17 @@
+@media print {
+  // invert navbar colors and hide links since some browsers (firefox)
+  // render print layout as very narrow
+  .navbar {
+    background-color: transparent;
+  }
+  .navbar-brand .text-white {
+    color: #153057;
+  }
+  .navbar-brand path,
+  .navbar-brand polygon {
+    fill: #153057;
+  }
+  .navbar-dark .navbar-nav {
+    display: none;
+  }
+}

@@ -1,0 +1,28 @@
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+@include "_cell_detector_stages.mro"
+
+pipeline _CELL_DETECTOR(
+    in  string reference_path,
+    in  string barcode_whitelist  "name of barcode whitelist file",
+    in  bam    bcsorted_bam       "bam file sorted by barcode",
+    in  int    force_cells        "force detection of force_cells cells",
+    out map    cell_barcodes      "list of barcodes likely to represent single cells",
+)
+{
+    call DETECT_CELL_BARCODES(
+        reference_path                = self.reference_path,
+        input                         = self.bcsorted_bam,
+        log_width                     = 1,
+        high_outlier_percentile_prior = 0.99,
+        barcode_whitelist             = self.barcode_whitelist,
+        force_cells                   = self.force_cells,
+    ) using (
+        volatile = true,
+    )
+
+    return (
+        cell_barcodes = DETECT_CELL_BARCODES.cell_barcodes,
+    )
+}

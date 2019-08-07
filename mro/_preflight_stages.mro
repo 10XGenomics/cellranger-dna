@@ -1,0 +1,15 @@
+
+#
+# Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+#
+stage CNV_CALLER_PREFLIGHT(
+    in  string sample_id,
+    in  string fastq_mode,
+    in  map[]  sample_def,
+    in  string reference_path,
+    in  int    force_cells,
+    in  map    cnv_params,
+    in  map    downsample,
+    in  bool   check_executables,
+    src py     "stages/preflight/cnv_caller",
+)

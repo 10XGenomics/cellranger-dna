@@ -1,0 +1,34 @@
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype bed;
+filetype bam;
+filetype json;
+filetype h5;
+filetype script;
+filetype txt;
+filetype png;
+filetype csv;
+filetype tsv;
+filetype pickle;
+
+stage REPORT_BASIC(
+    in  bam    input,
+    in  bam    input_pos,
+    in  bed    targets_file,
+    in  string barcode_whitelist,
+    out json   summary,
+    out h5     barcode_counts,
+    out json   insert_sizes,
+    out json   target_dists,
+    out json   mapq_counts,
+    out txt    misc_sm,
+    out txt    qual_sms,
+    src py     "stages/reporter/report_basic",
+) split (
+    in  string chunk_start,
+    in  string chunk_end,
+    in  int    n_chunks,
+) using (
+    mem_gb = 8,
+)

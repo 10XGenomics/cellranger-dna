@@ -1,0 +1,51 @@
+#
+# Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+#
+filetype json;
+filetype h5;
+filetype pdf;
+filetype bed;
+filetype txt;
+
+stage DETECT_BREAKPOINTS(
+    in  string reference_path,
+    in  h5     tracks,
+    in  h5     profiles,
+    in  map    params,
+    in  json   gc_norm_params,
+    in  bool   is_singlecell,
+    out h5     denoised_profiles,
+    src py     "stages/cluster_breakpoints/detect_breakpoints",
+) split (
+    in  map    chunk,
+    out txt    debug,
+)
+
+stage CREATE_CNV_TRACKS_AND_BED(
+    in  string reference_path,
+    in  string sex,
+    in  h5     tracks,
+    in  h5     cluster_data,
+    out h5     cnv_tracks,
+    out bed    cnv_calls,
+    out bed    unmerged_cnv_calls,
+    src py     "stages/cluster_breakpoints/create_cnv_tracks_and_bed",
+) split (
+)
+
+stage ESTIMATE_CNV_CONFIDENCE(
+    in  h5     raw_profiles,
+    in  h5     tracks,
+    in  string reference_path,
+    in  string sex,
+    in  bed    cnv_calls,
+    in  bed    unmerged_cnv_calls,
+    in  json   gc_norm_params,
+    #
+    out bed    cnvs,
+    out bed    unmerged_cnvs,
+    #
+    src py     "stages/copy_number_processor/cnv_confidence_estimator",
+) split (
+    in  map    chunk,
+)

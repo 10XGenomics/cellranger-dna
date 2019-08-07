@@ -1,0 +1,57 @@
+$font-family-base: 'DIN Next LT Pro';
+$font-weight-base: 400;
+
+$headings-font-family: 'DIN Next LT Pro';
+$headings-font-weight: 300;
+
+$font-family-monospace: Inconsolata;
+
+$brand-darkblue: #153057;
+$brand-red: #e84b50;
+$brand-green: #71be4b;
+$brand-yellow: #efbc1b;
+
+$theme-colors: (
+  "brand-darkblue": $brand-darkblue,
+  "brand-red": $brand-red,
+  "brand-green": $brand-green,
+  "brand-yellow": $brand-yellow,
+);
+
+.text-brand-red {
+  color: $brand-red;
+}
+
+.text-brand-yellow {
+  color: $brand-yellow;
+}
+
+.text-white {
+  color: #fff;
+}
+
+// required
+@import "node_modules/bootstrap/scss/functions";
+@import "node_modules/bootstrap/scss/variables";
+@import "node_modules/bootstrap/scss/mixins";
+
+// utils - none imported since it was around ~25kb but I only used a couple
+
+// reboot and grid
+@import "node_modules/bootstrap/scss/reboot";
+@import "node_modules/bootstrap/scss/grid";
+
+// components - please keep in alphabetic order
+@import '~bootstrap/scss/alert';
+@import '~bootstrap/scss/nav';
+@import '~bootstrap/scss/navbar';
+@import '~bootstrap/scss/tables';
+
+h2 {
+  margin-top: 1rem;
+}
+
+// add bottom border to table
+.table tr:last-child  {
+  border-bottom: $table-border-width solid $table-border-color;
+}

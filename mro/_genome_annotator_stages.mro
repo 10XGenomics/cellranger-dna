@@ -1,0 +1,54 @@
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype bam;
+filetype bed;
+filetype json;
+filetype csv;
+filetype bw;
+filetype tar.gz;
+filetype h5;
+filetype fasta;
+
+stage CREATE_GENOME_TRACKS(
+    in  string   reference_path,
+    in  int      window_size,
+    out h5       tracks,
+    src py       "stages/genome_annotator/create_genome_tracks",
+) split (
+    in  string[] chroms,
+)
+
+stage AGGREGATE_TRACKS(
+    in  bed targets,
+    in  bed confident_windows,
+    in  h5  map_track,
+    in  h5  genome_tracks,
+    out h5  tracks,
+    src py  "stages/genome_annotator/aggregate_tracks",
+)
+
+stage ANALYZE_OUTPUT(
+    in  bam[]  bams,
+    in  string reference_path,
+    in  int    samples_per_bin,
+    in  int    window_size,
+    out h5     mappability,
+    src py     "stages/genome_annotator/mappability/analyze_output",
+) split (
+    in  bam    bam,
+)
+
+stage SAMPLE_REFERENCE(
+    in  string   reference_path,
+    in  json     basic_stats,
+    in  json     insert_sizes,
+    in  int      window_size,
+    in  float    target_coverage,
+    out map[]    chunks,
+    out fasta    tmp,
+    out int      samples_per_bin,
+    src py       "stages/genome_annotator/mappability/sample",
+) split (
+    in  string[] loci,
+)

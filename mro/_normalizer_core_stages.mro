@@ -1,0 +1,44 @@
+#
+# Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+#
+filetype h5;
+filetype csv;
+filetype json;
+
+# ..........................................................................
+# Stage 1: Estimate linear and quadratic GC bias coefficients and scale
+stage ESTIMATE_NORMALIZATION_PARAMETERS(
+    in  h5     raw_profiles,
+    in  h5     tracks,
+    in  string reference_path,
+    #
+    out json   gc_norm_params,
+    #
+    src py     "stages/copy_number_processor/estimate_normalization_parameters",
+) split (
+)
+
+# ..........................................................................
+# Stage 2: Normalize GC bias using GC bias parameters from the previous stage
+stage NORMALIZE_PROFILES(
+    in  h5     raw_profiles,
+    in  h5     tracks,
+    in  string reference_path,
+    in  json   gc_norm_params,
+    #
+    out h5     normalized_profiles,
+    #
+    src py     "stages/copy_number_processor/normalize_profiles",
+) split (
+)
+
+stage REPORT_NORMALIZATION(
+    in  string reference_path,
+    in  h5     raw_profiles,
+    in  h5     normalized_profiles,
+    in  int    normalization_window_size,
+    in  bool   is_singlecell,
+    out h5     normalized_profiles,
+    src py     "stages/reporter/report_normalization",
+) split (
+)

@@ -1,0 +1,172 @@
+[
+	{
+		"id": "r1_q30",
+		"title": "Fraction of Q30 bases from R1",
+		"level": "ERROR",
+		"test": "1.0 * frac_bases_R1_Q30 < 0.7",
+		"message": "Ideal > 70%%. This usually indicates a quality issue with the Illumina R1 read.  Application performance likely to be affected.",
+		"raw_value": "100.0 * frac_bases_R1_Q30",
+		"formatted_value": "'%.1f%%' % (100.0 * frac_bases_R1_Q30)" ,
+		"parent": null
+	},
+	{
+		"id": "r2_q30",
+		"title": "Fraction of Q30 bases from R2",
+		"level": "ERROR",
+		"test": "1.0 * frac_bases_R2_Q30 < 0.7",
+		"message": "Ideal > 70%%. This usually indicates a quality issue with the Illumina R2 read.  Application performance likely to be affected.",
+		"raw_value": "100.0 * frac_bases_R2_Q30",
+		"formatted_value": "'%.1f%%' % (100.0 * frac_bases_R2_Q30)" ,
+		"parent": null
+	},
+    {
+		"id": "correct_bc_rate",
+		"title": "Fraction of reads with valid barcodes",
+		"level": "ERROR",
+		"test": "correct_bc_rate < 0.7",
+		"message": "Ideal > 85%%. This usually indicates a quality issue with the first 16 bases of read 1. This will result in an incorrect assignment of reads to cells and copy number calls are likely to be affected.",
+		"raw_value": "100.0 * correct_bc_rate",
+		"formatted_value": "'%.1f%%' % (100.0 * correct_bc_rate)" ,
+		"parent": null
+	},
+	{
+		"id": "correct_bc_rate_warn",
+		"title": "Fraction of reads with valid barcodes",
+		"level": "WARN",
+		"test": "correct_bc_rate < 0.85",
+		"message": "Ideal > 85%%. This usually indicates a quality issue with the first 16 bases of read 1. This will result in an incorrect assignment of reads to cells and copy number calls are likely to be affected.",
+		"raw_value": "100.0 * correct_bc_rate",
+		"formatted_value": "'%.1f%%' % (100.0 * correct_bc_rate)" ,
+		"parent": "correct_bc_rate"
+	},
+	{
+		"id": "not_enough_cells",
+		"title": "Number of cells",
+		"level": "ERROR",
+		"test": "num_cells < 10",
+		"message": "The recovered cell count is ideally between 250 and 5000. A low value indicates either an inaccurate quantification of cells input or a problem during library preparation.",
+		"raw_value": "num_cells",
+		"formatted_value": "'%i' % (num_cells)" ,
+		"parent": null
+	},
+	{
+		"id": "not_enough_cells_warn",
+		"title": "Number of cells",
+		"level": "WARN",
+		"test": "num_cells < 250",
+		"message": "The recovered cell count is ideally between 250 and 5000. A low value indicates either an inaccurate quantification of cells input or a problem during library preparation.",
+		"raw_value": "num_cells",
+		"formatted_value": "'%i' % (num_cells)" ,
+		"parent": "not_enough_cells"
+	},
+	{
+		"id": "too_many_cells",
+		"title": "Number of cells",
+		"level": "ERROR",
+		"test": "num_cells > 6000",
+		"message": "The recovered cell count is ideally between 250 and 5000. A high value indicates an overloading of cells, or severe underloading, or a problem during library preparation.",
+		"raw_value": "num_cells",
+		"formatted_value": "'%i' % (num_cells)" ,
+		"parent": null
+	},
+	{
+		"id": "too_many_cells_warn",
+		"title": "Number of cells",
+		"level": "WARN",
+		"test": "num_cells > 5000",
+		"message": "The recovered cell count is ideally between 250 and 5000. A high value indicates an overloading of cells, or severe underloading, or a problem during library preparation.",
+		"raw_value": "num_cells",
+		"formatted_value": "'%i' % (num_cells)" ,
+		"parent": "too_many_cells"
+	},
+	{
+		"id": "reads_per_1mbp",
+		"title": "Median effective reads per MB",
+		"level": "ERROR",
+		"test": "median_effective_reads_per_1Mbp < 10",
+		"message": "Ideal > 50. Copy number calling algorithm performance is adversely affected by low read coverage. Please see the 10x support site for details.",
+		"raw_value": "median_effective_reads_per_1Mbp",
+		"formatted_value": "'%.1f' % (median_effective_reads_per_1Mbp)",
+		"parent": null
+	},
+	{
+		"id": "reads_per_1mbp_warn",
+		"title": "Median effective reads per MB",
+		"level": "WARN",
+		"test": "median_effective_reads_per_1Mbp < 50",
+		"message": "Ideal > 50. Copy number calling algorithm performance is adversely affected by low read coverage. Please see the 10x support site for details.",
+		"raw_value": "median_effective_reads_per_1Mbp",
+		"formatted_value": "'%.1f' % (median_effective_reads_per_1Mbp)",
+		"parent": "reads_per_1mbp"
+	},
+	{
+		"id": "mappable_genome",
+		"title": "Fraction of genome mappable",
+		"level": "ERROR",
+		"test": "frac_mappable_bins < 0.5",
+		"message": "Ideal > 50%%. The supplied genome appears to have low unique sequence content. This could be a consequence of a poor assembly, a large fraction of N bases, high repeat content, or the presence of alternate haplotype contigs.",
+		"raw_value": "100.0 * frac_mappable_bins",
+		"formatted_value": "'%.1f%%' % (100.0 * frac_mappable_bins)",
+		"parent": null
+	},
+	{
+		"id": "noisy_cells",
+		"title": "Fraction of noisy cells",
+		"level": "ERROR",
+		"test": "frac_noisy_cells > 0.5",
+		"message": "Ideal < 50%%. A large fraction of cells have high variance in the read coverage profile. Copy number estimation in these cells can be severely impacted. Causes include a large fraction of cells undergoing DNA replication or a sample that is highly rearranged relative to the supplied genome or a problem during library preparation.",
+		"raw_value": "100.0 * frac_noisy_cells",
+		"formatted_value": "'%.1f%%' % (100.0 * frac_noisy_cells)",
+		"parent": null
+	},
+	{
+		"id": "empty_barcodes",
+		"title": "Fraction of reads not in cell barcodes",
+		"level": "ERROR",
+		"test": "frac_non_cell_barcode > 0.20",
+		"message": "Ideal < 10%%. A large fraction of reads not in cell barcodes could be a consequence of free floating DNA or a problem during library preparation. Copy number estimation for cells is unlikely to be impacted.",
+		"raw_value": "100.0 * frac_non_cell_barcode",
+		"formatted_value": "'%.1f%%' % (100.0 * frac_non_cell_barcode)",
+		"parent": null
+	},
+	{
+		"id": "empty_barcodes_warn",
+		"title": "Fraction of reads not in cell barcodes",
+		"level": "WARN",
+		"test": "frac_non_cell_barcode > 0.10",
+		"message": "Ideal < 10%%. A large fraction of reads not in cell barcodes could be a consequence of free floating DNA or a problem during library preparation. Copy number estimation for cells is unlikely to be impacted.",
+		"raw_value": "100.0 * frac_non_cell_barcode",
+		"formatted_value": "'%.1f%%' % (100.0 * frac_non_cell_barcode)",
+		"parent": "empty_barcodes"
+	},
+	{
+		"id": "shortest_primary_contigs",
+		"title": "Length of shortest primary contig",
+		"level": "ERROR",
+		"test": "shortest_primary_contig < 10 ** 7",
+		"message": "Ideal > 10,000,000 bases. Copy number estimation on contigs shorter than 10 megabases can be inaccurate, particularly at low sequencing depth.",
+		"raw_value": "shortest_primary_contig",
+		"formatted_value": "'%i bases' % (shortest_primary_contig)",
+		"parent": null
+	},
+	{
+		"id": "median_unmapped_frac",
+		"title": "Median unmapped reads per cell",
+		"level": "ERROR",
+		"test": "median_unmapped_frac > 0.2",
+		"message": "Ideal < 10%%. A high value indicates either poor sequencing quality or a sample that is significantly different from the supplied genome.",
+		"raw_value": "100.0 * median_unmapped_frac",
+		"formatted_value": "'%.1f%%' % (100.0*median_unmapped_frac)",
+		"parent": null
+	},	
+	{
+		"id": "median_unmapped_frac_warn",
+		"title": "Median unmapped reads per cell",
+		"level": "WARN",
+		"test": "median_unmapped_frac > 0.1",
+		"message": "Ideal < 10%%. A high value indicates either poor sequencing quality or a sample that is significantly different from the supplied genome.",
+		"raw_value": "100.0 * median_unmapped_frac",
+		"formatted_value": "'%.1f%%' % (100.0*median_unmapped_frac)",
+		"parent": "median_unmapped_frac"
+	}
+]

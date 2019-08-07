@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# Copyright (c) 2018 10x Genomics, Inc. All rights reserved.
+#
+# Main driver for all Cell Ranger DNA subcommands.
+#
+
+PRODUCT=cellranger-dna
+SUBCMDS=(
+    mkfastq
+    --
+    cnv
+    --
+    mkref 
+    --
+    testrun
+    upload 
+    sitecheck
+)
+
+export TENX_SCRIPTDIR=$(dirname `readlink -f $0`)
+source $TENX_SCRIPTDIR/../tenkit/bin/common/_master

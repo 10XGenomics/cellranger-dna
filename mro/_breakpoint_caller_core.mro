@@ -1,0 +1,53 @@
+@include "_breakpoint_caller_core_stages.mro"
+
+pipeline _BREAKPOINT_CALLER_CORE(
+    in  h5     profiles,
+    in  h5     tracks,
+    in  string reference_path,
+    in  string sex,
+    in  map    params,
+    in  json   gc_norm_params,
+    in  bool   is_singlecell,
+    out bed    cnv_calls,
+    out bed    unmerged_cnv_calls,
+    out h5     cnv_tracks,
+)
+{
+    call DETECT_BREAKPOINTS(
+        reference_path = self.reference_path,
+        tracks         = self.tracks,
+        profiles       = self.profiles,
+        params         = self.params,
+        gc_norm_params = self.gc_norm_params,
+        is_singlecell  = self.is_singlecell,
+    ) using (
+        volatile = true,
+    )
+
+    call CREATE_CNV_TRACKS_AND_BED(
+        reference_path = self.reference_path,
+        tracks         = self.tracks,
+        sex            = self.sex,
+        cluster_data   = DETECT_BREAKPOINTS.denoised_profiles,
+    ) using (
+        volatile = true,
+    )
+
+    call ESTIMATE_CNV_CONFIDENCE(
+        raw_profiles       = self.profiles,
+        tracks             = self.tracks,
+        reference_path     = self.reference_path,
+        sex                = self.sex,
+        cnv_calls          = CREATE_CNV_TRACKS_AND_BED.cnv_calls,
+        unmerged_cnv_calls = CREATE_CNV_TRACKS_AND_BED.unmerged_cnv_calls,
+        gc_norm_params     = self.gc_norm_params,
+    ) using (
+        volatile = true,
+    )
+
+    return (
+        cnv_calls          = ESTIMATE_CNV_CONFIDENCE.cnvs,
+        unmerged_cnv_calls = ESTIMATE_CNV_CONFIDENCE.unmerged_cnvs,
+        cnv_tracks         = CREATE_CNV_TRACKS_AND_BED.cnv_tracks,
+    )
+}

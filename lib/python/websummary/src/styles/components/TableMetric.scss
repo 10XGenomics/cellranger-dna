@@ -1,0 +1,33 @@
+.tableMetric-value {
+  font-family: 'Inconsolata';
+  text-align: right;
+}
+
+.tableMetric-truncate {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+}
+
+.tableMetric-fixedWidth {
+  word-wrap : break-word;
+}
+
+.tableMetric-truncate,
+.tableMetric-fixedWidth {
+  margin-left: auto;
+}
+
+@include media-breakpoint-up('xs') {
+  .tableMetric-truncate,
+  .tableMetric-fixedWidth {
+    width: 200px;
+  }
+}
+@include media-breakpoint-up('sm') {
+  .tableMetric-truncate,
+  .tableMetric-fixedWidth {
+    width: 300px;
+  }
+}

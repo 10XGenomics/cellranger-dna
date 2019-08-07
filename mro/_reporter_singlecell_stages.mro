@@ -1,0 +1,43 @@
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype bam;
+filetype bed;
+filetype json;
+filetype csv;
+filetype bw;
+filetype tar.gz;
+filetype h5;
+filetype npy;
+
+stage REPORT_SINGLECELL(
+    in  bam    input,
+    in  string barcode_whitelist,
+    in  string reference_path,
+    in  map    cell_barcodes,
+    in  h5     profiles,
+    in  json   duplicate_summary,
+    out json   summary,
+    out csv    barnyard,
+    out csv    barnyard_hits,
+    out json   barcode_histogram,
+    src py     "stages/reporter/report_singlecell",
+) split (
+    in  string chunk_start,
+    in  string chunk_end,
+) using (
+    mem_gb = 8,
+)
+
+stage MAKE_PROFILES(
+    in  bam      possorted,
+    in  string   reference_path,
+    in  int      window_size,
+    in  map      cell_barcodes,
+    in  h5       tracks,
+    out h5       profiles,
+    out bed      mappable_regions,
+    src py       "stages/reporter/make_profiles",
+) split (
+    in  string[] chroms,
+)
